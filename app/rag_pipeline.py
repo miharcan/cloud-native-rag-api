@@ -1,3 +1,5 @@
+import os
+
 from langchain_google_vertexai import ChatVertexAI, VertexAIEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
@@ -6,19 +8,25 @@ from langchain_core.documents import Document
 
 class RAGPipeline:
     def __init__(self):
-        self.location = "us-central1"
-        self.model_name = "gemini-2.5-flash-lite"
+        self.location = os.getenv("VERTEX_LOCATION", "us-central1")
+        self.project_id = os.getenv("GOOGLE_CLOUD_PROJECT")
+        self.model_name = os.getenv("VERTEX_MODEL", "gemini-2.5-flash-lite")
+        self.embedding_model = os.getenv(
+            "VERTEX_EMBEDDING_MODEL", "text-embedding-005"
+        )
 
         # LLM
         self.llm = ChatVertexAI(
             model=self.model_name,
+            project=self.project_id,
             location=self.location,
             temperature=0.2
         )
 
         # Embeddings
         self.embeddings = VertexAIEmbeddings(
-            model_name="text-embedding-005",
+            model_name=self.embedding_model,
+            project=self.project_id,
             location=self.location
         )
 

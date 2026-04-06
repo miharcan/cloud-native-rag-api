@@ -1,30 +1,91 @@
 # Cloud Native RAG API
 
-A production-ready Retrieval-Augmented Generation (RAG) API built with:
+Lightweight FastAPI RAG service using:
 
-- Vertex AI (Gemini 2.5 Flash-Lite)
-- Vertex AI Embeddings (text-embedding-005)
+- Vertex AI Gemini (`gemini-2.5-flash-lite`)
+- Vertex AI Embeddings (`text-embedding-005`)
 - FAISS vector search
-- FastAPI
 - Docker
-- Cloud Run ready
+
+This is a learning/demo project, not a hardened production service.
 
 ---
 
-## Architecture
+## What It Does
 
-1. User sends question
-2. Question is embedded using Vertex embeddings
-3. FAISS performs similarity search
-4. Retrieved context is injected into prompt
-5. Gemini generates grounded response
-6. API returns answer + sources
+1. Accepts a question via `POST /ask`
+2. Embeds the question with Vertex embeddings
+3. Retrieves top-k chunks from FAISS
+4. Prompts Gemini with retrieved context
+5. Returns answer + source chunks
 
 ---
 
-## Local Development
+## Important Requirement (GCP)
 
-### 1. Create virtual environment
+The API depends on Vertex AI for both generation and embeddings.  
+Docker alone is not enough; valid Google credentials are required for `/ask` to work.
+
+Minimum setup:
+
+```bash
+gcloud auth application-default login
+gcloud config set project YOUR_PROJECT_ID
+```
+
+Note: code currently uses `us-central1`.
+
+---
+
+## Quickstart (Docker First)
+
+### 1. Build image
+
+```bash
+docker build -t cloud-native-rag-api .
+```
+
+### 2. Run container
+
+```bash
+export PROJECT_ID="YOUR_PROJECT_ID"
+docker run --rm -p 8080:8080 \
+  -e GOOGLE_CLOUD_PROJECT="$PROJECT_ID" \
+  -e GOOGLE_APPLICATION_CREDENTIALS=/root/.config/gcloud/application_default_credentials.json \
+  -v "$HOME/.config/gcloud:/root/.config/gcloud:ro" \
+  cloud-native-rag-api
+```
+
+Open docs:
+
+```text
+http://localhost:8080/docs
+```
+
+### 3. Test endpoint
+
+```bash
+curl -X POST "http://localhost:8080/ask" \
+  -H "Content-Type: application/json" \
+  -d '{"question":"What is Retrieval-Augmented Generation?"}'
+```
+
+Expected response shape:
+
+```json
+{
+  "question": "...",
+  "answer": "...",
+  "sources": ["...", "...", "..."],
+  "model": "gemini-2.5-flash-lite"
+}
+```
+
+---
+
+## Local Development (Without Docker)
+
+### 1. Create and activate venv
 
 ```bash
 python3.11 -m venv .venv
@@ -41,39 +102,39 @@ pip install -r requirements.txt
 
 ```bash
 gcloud auth application-default login
+gcloud config set project YOUR_PROJECT_ID
 ```
 
-### 4. Run locally
+Optional explicit env vars:
+
+```bash
+export GOOGLE_CLOUD_PROJECT=YOUR_PROJECT_ID
+export VERTEX_LOCATION=us-central1
+```
+
+### 4. Run API
 
 ```bash
 uvicorn app.main:app --reload
 ```
 
 Open:
-```bash
+
+```text
 http://127.0.0.1:8000/docs
 ```
 
-## Docker
-Build
+---
 
-```bash
-docker build -t cloud-native-rag-api .
-```
+## Security Notes (Minimal)
 
-Run
+- Do not commit credentials or service-account key files.
+- `--allow-unauthenticated` is fine for learning demos, but avoid it for shared/public use.
+- Set a small budget alert to avoid accidental GCP spend.
 
-```bash
-docker run -p 8080:8080 cloud-native-rag-api
-```
+---
 
-Open:
-
-```bash
-http://localhost:8080/docs
-```
-
-## Cloud Run Deployment
+## Cloud Run Deployment (Demo)
 
 ```bash
 gcloud run deploy cloud-native-rag-api \
@@ -82,20 +143,12 @@ gcloud run deploy cloud-native-rag-api \
   --allow-unauthenticated
 ```
 
-Example Request
-POST /ask
+For safer deployment, remove `--allow-unauthenticated` and require IAM-authenticated callers.
 
-```bash
-{
-  "question": "What is Retrieval-Augmented Generation?"
-}
-```
+---
 
-### Tech Stack
+## Current Limitations
 
-FastAPI
-
-- LangChain (modular v1 architecture)
-- Vertex AI
-- FAISS
-- Docker
+- Knowledge base is currently in-memory sample text (not external corpus ingestion).
+- FAISS index is created at startup (no persistent managed vector DB).
+- No auth/rate limiting at API layer yet.

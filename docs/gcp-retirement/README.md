@@ -1,6 +1,6 @@
 # GCP retirement
 
-Date: 11 November 2026. Status: archive and shutdown in progress; final verification will be recorded here.
+Date: 11 November 2026. Status: archive and cloud shutdown verified on 11 November 2026. All eight inventoried GCP projects are shut down and billing links removed; local GCP logins were revoked. Full checksums and receipts are in the private archive.
 
 This repository documents Cloud Run deployment and uses Vertex AI. No deployed service from this repository was identified in the accessible GCP projects. Cloud examples are retained for historical reference only.
 
